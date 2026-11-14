@@ -212,6 +212,7 @@ const 문의 = "https://open.kakao.com/o/sWdAUBFi";
   if (테스트) $("testbar").hidden = false;
   if (!API) { $("testbar").hidden = false; $("testbar").textContent = "테스트 페이지입니다 · 아직 접수 주소가 연결되지 않았습니다"; }
   $("ask").href = 문의;
+  try { var 기억 = JSON.parse(localStorage.getItem("saemteo.home.v1") || "null"); if (기억 && 기억.이름) { $("이름").value = 기억.이름; var pd = String(기억.전화 || ""); $("전화").value = pd.length === 11 ? pd.slice(0, 3) + "-" + pd.slice(3, 7) + "-" + pd.slice(7) : pd; } } catch (e) {}
 
   var k = new Date(Date.now() + 9 * 3600 * 1000), y = k.getUTCFullYear(), m = k.getUTCMonth();
   var 다음달 = (m + 1) % 12 + 1, 말일 = new Date(Date.UTC(y, m + 1, 0)).getUTCDate();
@@ -308,6 +309,7 @@ const 문의 = "https://open.kakao.com/o/sWdAUBFi";
       .then(function (res) {
         if (!res || !res.ok) { 알림("look-err", (res && res.안내) || "찾지 못했어요. 잠시 뒤 다시 해 주세요."); return; }
         토큰 = res.토큰; 샘터들 = res.샘터; 내이름 = res.이름;
+        try { localStorage.setItem("saemteo.home.v1", JSON.stringify({ 이름: 이름, 전화: 번호 })); } catch (e) {}   // 홈 화면이 신청 여부를 알려 줄 수 있게 이 기기에만 기억
         if (res.신청월) { 신청월글 = Number(String(res.신청월).slice(5)) + "월"; document.querySelectorAll(".m-month").forEach(function (e) { e.textContent = 신청월글; }); }
         var 남은 = 샘터들.filter(function (s) { return !s.이미; });
         if (!남은.length) { 알림("look-err", 신청월글 + " 샘터는 이미 신청돼 있어요. 고칠 내용이 있으면 카카오톡 문의로 알려 주세요."); return; }

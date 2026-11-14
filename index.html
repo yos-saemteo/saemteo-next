@@ -23,6 +23,7 @@ const 설정 = {
   열린샘터: false,       // 보류 중. true로 바꾸면 '열린 샘터 찾기' 칸이 나타납니다
   운영주소: "https://yos-saemteo.github.io/saemteo/",   // 지금 운영 중인 페이지들 (모임 보고 · 은혜 나눔 · 안내)
   문의: "https://open.kakao.com/o/sWdAUBFi",            // 카카오톡 오픈채팅
+  접수: "https://script.google.com/macros/s/AKfycbxt4yORjygo-t1NNLxG-ps4t3_UAjs81ejGlI7RpykoEReU3LdGFtl3aC7xRcOVH-FT/exec",   // 샘지기 홈 웹앱 주소 (apply · again 과 같은 주소). 비우면 신청 여부 알림이 꺼집니다
   신청폼: "https://forms.gle/7uQZ7tqPUk4V9ria6",        // 샘터를 새로 열 때 쓰는 구글폼 (랜딩 페이지 신청 버튼과 같은 주소)
 };
 </script>
@@ -55,6 +56,12 @@ const 설정 = {
   .card .n { font-size: 14px; line-height: 1.6; color: var(--sub); }
   .btn { display: flex; align-items: center; justify-content: center; height: 54px; border-radius: 14px; background: var(--navy); color: #fff; font-size: 17px; font-weight: 600; text-decoration: none; }
   .btn.sub { height: 50px; background: #fff; color: var(--navy); box-shadow: inset 0 0 0 1.5px var(--navy); font-size: 16px; }
+  .card.due { box-shadow: inset 0 0 0 2px #C77A0A, 0 1px 2px rgba(27,58,92,.08); background: #FFFAF0; }
+  .dl { margin: 0; padding: 10px 12px; border-radius: 10px; background: #F4F7FA; font-size: 14px; line-height: 1.6; color: var(--sub2); }
+  .dl b { color: var(--ink); }
+  .card.due .dl { background: #FBEFD9; color: #6B4506; }
+  .tag.ok { background: #E3F1E8; color: #1F6B3F; }
+  .tag.late { background: #8C4A00; color: #fff; }
   .foot { margin: 0; text-align: center; font-size: 13px; line-height: 1.5; color: var(--sub); }
   h2 { margin: 28px 4px 10px; font-size: 15px; font-weight: 700; }
   .grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
@@ -91,21 +98,24 @@ const 설정 = {
     <p>모임 보고부터 다음 달 신청까지, 샘지기가 할 일을 여기 모았어요.</p>
   </div>
 
-  <section class="card" aria-label="모임 보고">
+  <section class="card" id="report-card" aria-label="모임 보고">
     <div>
-      <div class="t" style="margin-top:0">모임 보고</div>
+      <span class="tag" id="report-tag" hidden></span>
+      <div class="t" id="report-t" style="margin-top:0">모임 보고</div>
       <div class="n">모임을 마친 자리에서 참석자, 인증샷, 영수증을 한 번에 올려요.</div>
     </div>
+    <p class="dl" id="report-dl" hidden></p>
     <a class="btn" data-live="report/" href="#">모임 보고하기</a>
   </section>
 
-  <section class="card" aria-label="다음 달 이어가기" style="margin-top:14px">
+  <section class="card" id="again-card" aria-label="다음 달 이어가기" style="margin-top:14px">
     <div>
-      <span class="tag">신청 받는 중</span>
-      <div class="t"><span id="apply-month"></span> 샘터 이어가기</div>
-      <div class="n"><span id="apply-due"></span> 이름과 번호만 확인하면 이번 달 샘터 그대로 신청돼요.</div>
+      <span class="tag" id="again-tag">신청 받는 중</span>
+      <div class="t" id="again-t"><span id="apply-month"></span> 샘터 이어가기</div>
+      <div class="n" id="again-n"><span id="apply-due"></span> 이름과 번호만 확인하면 이번 달 샘터 그대로 신청돼요.</div>
     </div>
-    <a class="btn sub" href="again/">이번 달 샘터 그대로 이어가기</a>
+    <a class="btn sub" id="again-btn" href="again/">이번 달 샘터 그대로 이어가기</a>
+    <p class="foot" id="again-who" hidden><span id="again-name"></span> 님 기준이에요 · <a href="#" id="again-forget">다른 사람이에요</a></p>
     <p class="foot">샘터를 새로 열거나 하나 더 열 때는 <a href="apply/">신청서 작성</a></p>
   </section>
 
@@ -154,6 +164,82 @@ const 설정 = {
   document.querySelectorAll('[data-link="문의"]').forEach(function (a) { a.href = 문의; });
   var 폼 = /^https:\/\/[^\s"'<>]+$/.test(설정.신청폼) ? 설정.신청폼 : 운영;
   document.querySelectorAll('[data-link="신청폼"]').forEach(function (a) { a.href = 폼; });
+
+  // ---- 모임 보고 마감 알림: 기본은 '다음 달 첫 일요일', ⚙️설정에 날짜가 있으면 그 날 (웹앱이 알려 줌)
+  (function () {
+    var $ = function (id) { return document.getElementById(id); };
+    var 요일 = ["일", "월", "화", "수", "목", "금", "토"];
+    var 오늘 = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    function 날짜(s) { var m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(s || ""); return m ? new Date(+m[1], +m[2] - 1, +m[3]) : null; }
+    function 첫일요일(y, m0) { var d = new Date(y, m0 + 1, 1); while (d.getDay() !== 0) d.setDate(d.getDate() + 1); return d; }
+    function 글(d) { return (d.getMonth() + 1) + "월 " + d.getDate() + "일(" + 요일[d.getDay()] + ")"; }
+    function 남은(d) { return Math.round((d - 오늘) / 86400000); }
+    function 그리기(o) {
+      var 이번 = (o && o.이번달 && 날짜(o.이번달.마감)) || 첫일요일(now.getFullYear(), now.getMonth());
+      var 지난 = (o && o.지난달 && 날짜(o.지난달.마감)) || 첫일요일(now.getFullYear(), now.getMonth() - 1);
+      var 인정 = o && o.이번달 && 날짜(o.이번달.인정마감);
+      var 이번달 = (now.getMonth() + 1) + "월", 지난달 = (now.getMonth() || 12) + "월";
+      var 줄 = [], 급함 = false, 표 = "";
+      var d1 = 남은(지난);
+      if (d1 >= 0) {   // 지난달 보고 마감이 아직 안 지났을 때 (월초)
+        줄.push("<b>" + 지난달 + " 모임 보고는 " + 글(지난) + "까지</b>예요. " + (d1 === 0 ? "오늘 마감이에요." : d1 + "일 남았어요."));
+        급함 = true; 표 = d1 === 0 ? 지난달 + " 보고 오늘 마감" : 지난달 + " 보고 마감 " + d1 + "일 전";
+      }
+      var d2 = 남은(이번);
+      if (인정 && 남은(인정) >= 0) {
+        var d3 = 남은(인정);
+        줄.push("<b>" + 이번달 + "은 " + 글(인정) + " 모임까지</b> 지원돼요." + (d3 <= 7 ? (d3 === 0 ? " 오늘까지예요." : " " + d3 + "일 남았어요.") : ""));
+        if (d3 <= 7 && !표) { 급함 = true; 표 = d3 === 0 ? "오늘까지 지원" : "지원 마감 " + d3 + "일 전"; }
+      }
+      // 지난달 마감이 아직 남아 있는 월초에는 그것만 보여 줌 (이번 달 마감은 한 달 뒤라 같이 뜨면 헷갈림)
+      if (d1 < 0 || d2 <= 7) 줄.push((d2 <= 7 ? "<b>" : "") + 이번달 + " 모임 보고는 " + 글(이번) + "까지" + (d2 <= 7 ? "</b>" : "") + "예요." + (d2 <= 7 ? " " + d2 + "일 남았어요." : ""));
+      if (d2 <= 7 && !표) { 급함 = true; 표 = 이번달 + " 보고 마감 " + d2 + "일 전"; }
+      $("report-dl").innerHTML = 줄.join("<br>"); $("report-dl").hidden = false;   // 글자는 모두 이 코드가 만든 것 (입력값 없음)
+      $("report-tag").hidden = !표; $("report-tag").textContent = 표; $("report-tag").className = "tag late";
+      $("report-t").style.marginTop = 표 ? "" : "0";
+      $("report-card").classList.toggle("due", 급함);
+    }
+    그리기(null);
+    if (!/^https:\/\/script\.google\.com\//.test(설정.접수 || "")) return;
+    fetch(설정.접수, { redirect: "follow" }).then(function (r) { return r.json(); }).then(function (res) { if (res && res.보고) 그리기(res.보고); }).catch(function () {});
+  })();
+
+  // ---- 다음 달 신청 여부 알림: 이어가기에서 한 번 본인 확인을 한 기기라면, 아직 신청 전인지 홈에서 바로 알려 줍니다
+  (function () {
+    var $ = function (id) { return document.getElementById(id); };
+    var 달 = (next.getMonth() + 1) + "월", 남은 = last.getDate() - now.getDate();
+    var 남은글 = 남은 <= 0 ? "오늘 마감이에요" : "마감까지 " + 남은 + "일 남았어요";
+    var 급함 = 남은 <= 7;
+    function 전(팀들, 이름) {
+      $("again-tag").textContent = 급함 ? (남은 <= 0 ? "오늘 마감" : "마감 " + 남은 + "일 전") : "아직 신청 전";
+      $("again-tag").className = "tag" + (급함 ? " late" : "");
+      $("again-t").textContent = 달 + " 샘터를 아직 신청하지 않았어요";
+      $("again-n").textContent = (팀들.length ? 팀들.join(", ") + " · " : "") + (now.getMonth() + 1) + "월 " + last.getDate() + "일까지 받아요. " + 남은글 + ".";
+      $("again-btn").className = "btn"; $("again-btn").textContent = 달 + "도 그대로 이어가기"; $("again-btn").hidden = false;
+      $("again-card").classList.toggle("due", 급함);
+    }
+    function 완료(팀들) {
+      $("again-tag").textContent = "신청 완료"; $("again-tag").className = "tag ok";
+      $("again-t").textContent = 달 + " 샘터 신청을 마쳤어요";
+      $("again-n").textContent = (팀들.length ? 팀들.join(", ") + " · " : "") + "달이 바뀌면 여기서 바로 모임 보고를 할 수 있어요.";
+      $("again-btn").hidden = true; $("again-card").classList.remove("due");
+    }
+    if (급함) { $("again-tag").textContent = 남은 <= 0 ? "오늘 마감" : "마감 " + 남은 + "일 전"; $("again-tag").className = "tag late"; }
+    var 나 = null;
+    try { 나 = JSON.parse(localStorage.getItem("saemteo.home.v1") || "null"); } catch (e) {}
+    if (!나 || !나.이름 || !나.전화 || !/^https:\/\/script\.google\.com\//.test(설정.접수 || "")) return;
+    $("again-name").textContent = 나.이름; $("again-who").hidden = false;
+    $("again-forget").addEventListener("click", function (e) { e.preventDefault(); try { localStorage.removeItem("saemteo.home.v1"); } catch (x) {} location.reload(); });
+    fetch(설정.접수, { method: "POST", headers: { "Content-Type": "text/plain;charset=utf-8" }, body: JSON.stringify({ action: "이어가기상태", 이름: 나.이름, 전화: 나.전화 }), redirect: "follow" })
+      .then(function (r) { return r.json(); })
+      .then(function (res) {
+        if (!res || !res.ok || !res.샘터 || !res.샘터.length) return;   // 이번 달 샘터가 없으면 기본 안내 그대로
+        var 이름표 = function (x) { return 나.이름 + (x.팀구분 ? "_" + x.팀구분 : ""); };
+        var 안한 = res.샘터.filter(function (x) { return !x.이미; }).map(이름표);
+        if (안한.length) 전(res.샘터.length > 1 ? 안한 : [], 나.이름); else 완료(res.샘터.length > 1 ? res.샘터.map(이름표) : []);
+      })
+      .catch(function () {});
+  })();
 
   document.getElementById("testbar").hidden = !설정.테스트;
   document.getElementById("tile-open").hidden = !설정.열린샘터;
