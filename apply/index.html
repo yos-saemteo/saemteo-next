@@ -136,12 +136,6 @@ const 문의 = "https://open.kakao.com/o/sWdAUBFi";
           <input type="tel" id="전화" inputmode="numeric" maxlength="13" placeholder="010-1234-5678" autocomplete="tel">
           <div class="err">휴대폰 번호를 확인해 주세요.</div>
         </div>
-        <div class="f" data-f="이메일">
-          <label for="이메일">이메일</label>
-          <input type="email" id="이메일" maxlength="100" placeholder="name@example.com" autocomplete="email" autocapitalize="off">
-          <div class="hint">안내 메일을 이 주소로 보내 드려요.</div>
-          <div class="err">이메일 주소를 확인해 주세요.</div>
-        </div>
         <div class="f" data-f="팀구분">
           <label for="팀구분">팀명 <span class="opt">(샘터를 2개 이상 열 때만)</span></label>
           <input type="text" id="팀구분" maxlength="20" placeholder="예) 목요팀" autocomplete="off">
@@ -215,7 +209,7 @@ const 문의 = "https://open.kakao.com/o/sWdAUBFi";
         <div class="f" data-f="동의">
           <span class="lab">개인정보 수집 · 이용 동의</span>
           <div class="agree" style="margin-top:8px">
-            <b>수집 항목</b> 이름, 연락처, 이메일, 계좌 정보(은행 · 계좌번호), 샘원 이름<br>
+            <b>수집 항목</b> 이름, 연락처, 계좌 정보(은행 · 계좌번호), 샘원 이름<br>
             <b>이용 목적</b> 샘터 운영 관리, 드라이브 폴더 · 정산폼 생성 및 공유, 정산금 지급, 정산 서류 작성<br>
             <b>보유 기간</b> 해당 운영 사이클 종료 및 정산 완료 후 회계 처리 기준에 따라 보관<br>
             동의하지 않으시면 신청이 제한됩니다.
@@ -243,8 +237,14 @@ const 문의 = "https://open.kakao.com/o/sWdAUBFi";
     <div class="done-mark"><svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m5 12.5 4.5 4.5L19 7.5"/></svg></div>
     <h1 id="done-t">신청됐어요</h1>
     <p class="lead" id="done-p"></p>
-    <div class="note">양육국 청년샘터에서 확인한 뒤 안내 메일을 보내 드려요. 고칠 내용이 있으면 카카오톡으로 알려 주세요.</div>
-    <a class="btn" href="../">샘지기 홈으로</a>
+    <div class="note">안내는 샘지기 공지방에서 드려요. 고칠 내용이 있으면 카카오톡 문의로 알려 주세요.</div>
+    <div class="card" id="room" hidden>
+      <div class="lab">샘지기 공지방</div>
+      <div class="hint" style="margin-top:6px;font-size:14px">아직 들어오지 않았다면 지금 들어와 주세요.</div>
+      <div id="room-code-box" hidden style="margin-top:12px;padding:12px 14px;border-radius:12px;background:#F4F7FA;font-size:15px">참여 코드 <b id="room-code" style="margin-left:6px;font-size:18px;letter-spacing:.08em"></b></div>
+      <a class="btn" id="room-link" href="#" target="_blank" rel="noopener" style="margin-top:14px">공지방 들어가기</a>
+    </div>
+    <a class="btn ghost" href="../">샘지기 홈으로</a>
     <a class="btn ghost" id="ask" href="#" target="_blank" rel="noopener">카카오톡 문의</a>
   </section>
 </div>
@@ -306,7 +306,7 @@ const 문의 = "https://open.kakao.com/o/sWdAUBFi";
   function 모으기() {
     var d = {
       자격구분: 고른("자격구분"), 수료년도: $("수료년도").value, 소속국: $("소속국").value, 또래: 붙임($("또래").value),
-      이름: 붙임($("이름").value), 전화: $("전화").value.trim(), 이메일: 붙임($("이메일").value).toLowerCase(), 팀구분: 글($("팀구분").value),
+      이름: 붙임($("이름").value), 전화: $("전화").value.trim(), 팀구분: 글($("팀구분").value),
       샘원: [], 모임요일: 고른("모임요일"), 모임시간: 붙임($("모임시간").value), 모임지역: 글($("모임지역").value), 모임비전: $("모임비전").value.trim(),
       은행: 글($("은행").value), 계좌번호: 붙임($("계좌번호").value), 동의: $("동의").checked
     };
@@ -329,7 +329,6 @@ const 문의 = "https://open.kakao.com/o/sWdAUBFi";
       if (!/^\d{2}$/.test(d.또래)) bad.push("또래");
       if (d.이름.length < 2) bad.push("이름");
       if (!/^01[016789]\d{7,8}$/.test(d.전화.replace(/\D/g, ""))) bad.push("전화");
-      if (!/^[^@\s]+@[^@\s]+\.[^@\s]{2,}$/.test(d.이메일)) bad.push("이메일");
     }
     if (n === 2) {
       var msg = "", 본 = {};
@@ -339,7 +338,7 @@ const 문의 = "https://open.kakao.com/o/sWdAUBFi";
         if (msg) return;
         if (!s.이름) msg = "관계만 고른 칸이 있어요. 이름을 적어 주세요.";
         else if (!s.관계) msg = s.이름 + "님과의 관계를 골라 주세요.";
-        else if (본[s.이름]) msg = "같은 이름이 두 번 들어 있어요: " + s.이름;
+        else if (본[s.이름]) msg = "같은 이름이 두 번 들어 있어요: " + s.이름 + ". 동명이인이면 한 분 이름 뒤에 B를 붙여 주세요 (예: " + s.이름 + "B).";
         본[s.이름] = 1;
       });
       if (msg) { $("mem-err").textContent = msg; bad.push("샘원"); }
@@ -378,7 +377,7 @@ const 문의 = "https://open.kakao.com/o/sWdAUBFi";
     var rows = [
       ["샘지기", d.이름 + (d.팀구분 ? "_" + d.팀구분 : "") + " · " + d.소속국 + " · " + d.또래 + "또래"],
       ["자격", d.자격구분 + (d.수료년도 ? " (" + (/^\d+$/.test(d.수료년도) ? d.수료년도 + "년 수료" : "수료년도 확인 필요") + ")" : "")],
-      ["연락처", d.전화], ["이메일", d.이메일],
+      ["연락처", d.전화],
       ["샘원", d.샘원.map(function (s) { return s.이름 + " (" + s.관계 + ")"; }).join(", ")],
       ["모임", d.모임요일 + "요일 " + d.모임시간 + " · " + d.모임지역],
       ["비전", d.모임비전],
@@ -429,6 +428,10 @@ const 문의 = "https://open.kakao.com/o/sWdAUBFi";
           var 달 = res.신청월 ? Number(String(res.신청월).slice(5)) + "월" : 다음달 + "월";
           $("done-t").textContent = 달 + " 샘터, 신청됐어요";
           $("done-p").textContent = d.이름 + (d.팀구분 ? "_" + d.팀구분 : "") + " 샘지기님 · " + d.모임요일 + "요일 " + d.모임시간 + " · " + d.모임지역;
+          if (res.공지방 && /^https:\/\/open\.kakao\.com\//.test(res.공지방)) {
+            $("room-link").href = res.공지방; $("room").hidden = false;
+            if (res.참여코드) { $("room-code").textContent = res.참여코드; $("room-code-box").hidden = false; }
+          }
           $("form").hidden = true; $("bar").hidden = true; $("back").hidden = true; $("step-t").hidden = true; $("done").hidden = false;
           $("form").reset();
           window.scrollTo(0, 0);
